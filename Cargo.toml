@@ -1,0 +1,10 @@
+[package]
+name = "packattack"
+version = "0.1.0"
+authors = ["Ethan Spurlock <ethan@spurlock.io>"]
+edition = "2018"
+
+
+[dependencies]
+macro-attr = "0.2.0"
+enum_derive = "0.1.7"
