@@ -1,5 +1,5 @@
 [package]
-name = "packattack"
+name = "packattack-derive"
 version = "0.1.0"
 authors = ["Ethan Spurlock <ethan@spurlock.io>"]
 edition = "2018"

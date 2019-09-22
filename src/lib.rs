@@ -4,20 +4,6 @@
 #[macro_use]
 extern crate quote;
 
-
-trait ReadObjectFromBytes
-{
-    fn read_from_bytes(bytes: &[u8]) -> Option<&Self>;
-}
-
-impl ReadObjectFromBytes for u8
-{
-    fn read_from_bytes(bytes: &[u8]) -> Option<&Self>
-    {
-        return bytes.first();
-    }
-}
-
 extern crate proc_macro;
 
 extern crate proc_macro2;
@@ -25,11 +11,8 @@ extern crate proc_macro2;
 extern crate syn;
 
 use proc_macro::TokenStream;
-use proc_macro2::Span;
 
-
-
-use syn::{Data, Fields, Ident };
+use syn::{Data, Fields };
 
 #[proc_macro_derive(FromBytes)]
 pub fn from_bytes(input: TokenStream) -> TokenStream {
@@ -99,7 +82,7 @@ pub fn from_bytes(input: TokenStream) -> TokenStream {
         .collect();
 
     let blah = quote! {
-        impl ReadObjectFromBytes for #name {
+        impl FromBytes for #name {
             #[allow(trivial_numeric_casts)]
             fn read_from_bytes(bytes: &[u8]) -> Option<&Self>
             {
@@ -116,5 +99,3 @@ pub fn from_bytes(input: TokenStream) -> TokenStream {
 
     blah.into()
 }
-
-    //dummy_const_trick("FromBytes", &name, impl_).into()
