@@ -1,15 +1,16 @@
 #![feature(arbitrary_enum_discriminant)]
+#![crate_type = "proc-macro"]
 
-#[macro_use] extern crate macro_attr;
+#[macro_use]
+extern crate quote;
 
-mod macro_test;
 
-pub trait FromBytes
+trait ReadObjectFromBytes
 {
     fn read_from_bytes(bytes: &[u8]) -> Option<&Self>;
 }
 
-impl FromBytes for u8
+impl ReadObjectFromBytes for u8
 {
     fn read_from_bytes(bytes: &[u8]) -> Option<&Self>
     {
@@ -17,56 +18,103 @@ impl FromBytes for u8
     }
 }
 
-// Define macros which derive implementations of these macros.
-macro_rules! FromBytes {
-    // We can support any kind of item we want.
-    (($repr:ty)) => { $repr.read_from_bytes(&bytes); };
-    ($($name:ident $( ($($tail:ty),* ) )* = $count:expr),* ) => 
-    {
-        $($count:expr),* => { Packet::CONNACK },
-        //$($name:ident $( ($($tail:ty),* ) )*),*
-    };
-    (($repr:ty) $(pub)* enum $src_name:ident { $($tail:tt)* } ) => 
-    { 
-        
-        
-        impl FromBytes for $src_name
-        {
-            fn read_from_bytes(bytes: &[u8]) -> Option<& $src_name> 
-            {
-                match <$repr>::read_from_bytes(bytes)
-                {
-                    FromBytes!{ $($tail)* }
+extern crate proc_macro;
 
-                    _ => { panic!("Couldn't read {} ", $src_name) }
+extern crate proc_macro2;
+
+extern crate syn;
+
+use proc_macro::TokenStream;
+use proc_macro2::Span;
+
+
+
+use syn::{Data, Fields, Ident };
+
+#[proc_macro_derive(FromBytes)]
+pub fn from_bytes(input: TokenStream) -> TokenStream {
+    let ast: syn::DeriveInput = syn::parse(input).unwrap();
+    let name = &ast.ident;
+
+    let variants = match ast.data {
+        Data::Enum(ref data_enum) => &data_enum.variants,
+        _ => panic!(
+            "`FromPrimitive` can be applied only to enums, {} is neither",
+            name
+        ),
+    };
+
+    let clauses: Vec<_> = variants
+        .iter()
+        .map(|variant| {
+            let ident = &variant.ident;
+            let discriminant = &variant.discriminant;
+            match &variant.fields {
+                Fields::Unit => 
+                {
+                    match discriminant
+                    {
+                        Some((_eq,express)) =>
+                        {
+                            quote!  {
+                                #express => Some(#name::#ident),
+                            }
+                        },
+                        None => { panic!("must define discriminant") }
+                    }
+                    
+                },
+                Fields::Unnamed(fields_unnamed) => 
+                {
+                    let fields : Vec::<_> = fields_unnamed.unnamed
+                    .iter().map(|field|
+                    {
+                        quote!
+                        {
+                            <#field>::read_from_bytes(&bytes)
+                        }
+                    })
+                    .collect();
+
+                    match discriminant
+                    {
+                        Some((_eq,express)) =>
+                        {
+
+                            quote!
+                            {
+                                #express => Some(#name::#ident(#(#fields),*)),
+                            }
+                        },
+                        None => { panic!("must define discriminant") }
+                    }
+                        
+                },
+                Fields::Named(_fields_named) => 
+                {
+                    panic!("Yep. You found a Named Field... Packattack doesn't support these at the moment.")//anonymous struct variant
+                }
+            }
+        })
+        .collect();
+
+    let blah = quote! {
+        impl ReadObjectFromBytes for #name {
+            #[allow(trivial_numeric_casts)]
+            fn read_from_bytes(bytes: &[u8]) -> Option<&Self>
+            {
+                match &bytes[0]
+                {
+                    #(#clauses)*
+                    _ => None
                 }
             }
         }
-        
-    };  
-     
+    };
+
+    println!("{}", blah);
+
+    blah.into()
 }
 
-macro_attr! {
-    #[allow(dead_code)]
-    #[derive(Clone, Copy, Debug, FromBytes!(u8))]
-    #[repr(u8)]
-    pub enum Packet 
-    {
-        //CONNECT(Protocol, ProtocolLevel, ConnectFlags, KeepAlive),
-        CONNACK = 1,
-        PUBLISH = 2 ,
-        PUBACK = 3,
-        PUBREC = 4,
-        PUBREL = 5,
-        PUBCOMP = 6,
-        SUBSCRIBE = 7,
-        SUBACK(u8,u8) = 8,
-        UNSUBSCRIBE = 9,
-        UNSUBACK = 10,
-        PINGREQ = 11,
-        PINGRESP = 12,
-        DISCONNECT = 13,
-        AUTH = 14
-    }
-}
+    //dummy_const_trick("FromBytes", &name, impl_).into()
