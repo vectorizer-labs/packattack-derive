@@ -12,90 +12,52 @@ extern crate syn;
 
 use proc_macro::TokenStream;
 
-use syn::{Data, Fields };
+use syn::{Data };
 
-#[proc_macro_derive(FromBytes)]
+mod enum_from_bytes;
+mod struct_from_bytes;
+
+
+#[proc_macro_derive(FromBytes,attributes(start_byte,end_byte))]
 pub fn from_bytes(input: TokenStream) -> TokenStream {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let name = &ast.ident;
 
-    let variants = match ast.data {
-        Data::Enum(ref data_enum) => &data_enum.variants,
+    match ast.data {
+        Data::Enum(ref data_enum) =>
+        {
+            enum_from_bytes::enum_from_bytes(&data_enum.variants, name)
+        },
+        Data::Struct(ref data_struct) =>
+        {
+            struct_from_bytes::struct_from_bytes(&data_struct.fields, name)
+        }
         _ => panic!(
-            "`FromPrimitive` can be applied only to enums, {} is neither",
+            "`FromBytes` can be applied only to enums or structs, {} is neither",
             name
         ),
-    };
-
-    let clauses: Vec<_> = variants
-        .iter()
-        .map(|variant| {
-            let ident = &variant.ident;
-            let discriminant = &variant.discriminant;
-            match &variant.fields {
-                Fields::Unit => 
-                {
-                    match discriminant
-                    {
-                        Some((_eq,express)) =>
-                        {
-                            quote!  {
-                                #express => Some(#name::#ident),
-                            }
-                        },
-                        None => { panic!("must define discriminant") }
-                    }
-                    
-                },
-                Fields::Unnamed(fields_unnamed) => 
-                {
-                    let fields : Vec::<_> = fields_unnamed.unnamed
-                    .iter().map(|field|
-                    {
-                        quote!
-                        {
-                            <#field>::read_from_bytes(&bytes)
-                        }
-                    })
-                    .collect();
-
-                    match discriminant
-                    {
-                        Some((_eq,express)) =>
-                        {
-
-                            quote!
-                            {
-                                #express => Some(#name::#ident(#(#fields),*)),
-                            }
-                        },
-                        None => { panic!("must define discriminant") }
-                    }
-                        
-                },
-                Fields::Named(_fields_named) => 
-                {
-                    panic!("Yep. You found a Named Field... Packattack doesn't support these at the moment.")//anonymous struct variant
-                }
-            }
-        })
-        .collect();
-
-    let blah = quote! {
-        impl FromBytes for #name {
-            #[allow(trivial_numeric_casts)]
-            fn read_from_bytes(bytes: &[u8]) -> Option<&Self>
-            {
-                match &bytes[0]
-                {
-                    #(#clauses)*
-                    _ => None
-                }
-            }
-        }
-    };
-
-    println!("{}", blah);
-
-    blah.into()
+    }
 }
+
+#[proc_macro_derive(FromByte, attributes())]
+pub fn from_byte(input: TokenStream) -> TokenStream {
+    let ast: syn::DeriveInput = syn::parse(input).unwrap();
+    let name = &ast.ident;
+
+    match ast.data {
+        Data::Enum(ref data_enum) =>
+        {
+            enum_from_bytes::enum_from_bytes(&data_enum.variants, name)
+        },
+        Data::Struct(ref data_struct) =>
+        {
+            struct_from_bytes::struct_from_bytes(&data_struct.fields, name)
+        }
+        _ => panic!(
+            "`FromBytes` can be applied only to enums or structs, {} is neither",
+            name
+        ),
+    }
+}
+
+

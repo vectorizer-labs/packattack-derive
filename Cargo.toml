@@ -1,5 +1,5 @@
 [package]
-name = "packattack-derive"
+name = "packattack_derive"
 version = "0.1.0"
 authors = ["Ethan Spurlock <ethan@spurlock.io>"]
 edition = "2018"
@@ -9,6 +9,7 @@ edition = "2018"
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["derive"] }
+packattack = { path = "C:\\Users\\Ethan\\Desktop\\packattack"  }
 
 [lib]
 proc-macro = true
