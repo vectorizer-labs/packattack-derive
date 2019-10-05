@@ -43,7 +43,6 @@ pub fn struct_from_bytes(fields : &Fields, name : &proc_macro2::Ident) -> TokenS
                         //then return control to the parent loop
                         process_byte(&mut clauses, &mut field_iter, &field)
                     }
-
                 }
             }
 
@@ -162,7 +161,7 @@ fn build_terminating_bit_type_clause(preceding : &Vec<proc_macro2::TokenStream>,
             <#derivable>::read_from_byte(&bytes[*count - 1], 
             //add up all the sizes of the types before this type
             //that determines which index to push the bitmask to
-            <#derivable>::bitmask >> #(#preceding)+* ) 
+            #(#preceding)+* ) 
         }
     }
 }

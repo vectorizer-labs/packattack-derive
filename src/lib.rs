@@ -8,13 +8,16 @@ extern crate proc_macro;
 
 extern crate proc_macro2;
 
+#[macro_use]
 extern crate syn;
 
 use proc_macro::TokenStream;
 
-use syn::{Data };
+use syn::{Data, Meta };
 
 mod enum_from_bytes;
+mod enum_from_byte;
+
 mod struct_from_bytes;
 
 
@@ -39,25 +42,68 @@ pub fn from_bytes(input: TokenStream) -> TokenStream {
     }
 }
 
-#[proc_macro_derive(FromByte, attributes())]
+#[proc_macro_derive(FromByte, attributes(size_in_bits, bitmask))]
 pub fn from_byte(input: TokenStream) -> TokenStream {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let name = &ast.ident;
 
+    //gather size and bitmask attributes
+    let size_in_bits : Option<syn::Lit> = get_attribute_value(&ast, "size_in_bits");
+
+    let s_i_b_value = match size_in_bits
+    {
+        Some(sib) => 
+        {
+            (quote!{#sib}).to_string().parse::<usize>().unwrap()
+        },
+        None => panic!("No size_in_bits attribute found!")
+    };
+
+    //TODO parse attributes and pass them down
     match ast.data {
         Data::Enum(ref data_enum) =>
         {
-            enum_from_bytes::enum_from_bytes(&data_enum.variants, name)
+            enum_from_byte::enum_from_byte(&data_enum.variants, name, s_i_b_value)
         },
-        Data::Struct(ref data_struct) =>
-        {
-            struct_from_bytes::struct_from_bytes(&data_struct.fields, name)
-        }
         _ => panic!(
-            "`FromBytes` can be applied only to enums or structs, {} is neither",
+            "deriving `FromByte` can be applied only to enums, {} is neither",
             name
         ),
     }
+}
+
+fn get_attribute_value(ast: &syn::DeriveInput, token : &str) -> Option<syn::Lit>
+{
+    for attr in ast.attrs.iter()
+    {
+        match attr.parse_meta()
+        {
+            Ok(meta_attribute) =>
+            {
+                match meta_attribute
+                {
+                    Meta::NameValue(meta_name_value) => 
+                    {
+                        let path_to_print = &meta_name_value.path;
+
+                        //println!("Meta Value {}", quote!{#path_to_print}.to_string().as_str());
+
+                        match &*quote!{#path_to_print}.to_string() == token
+                        {
+                            true => return Some(meta_name_value.lit),
+                            false => return None
+                        }
+                        
+                    },
+                    Meta::Path(path) => {},
+                    Meta::List(meta_list) => {}
+                }
+            },
+            _ => return None
+        }
+    }
+
+    return None
 }
 
 
