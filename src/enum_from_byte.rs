@@ -4,15 +4,9 @@ extern crate proc_macro2;
 
 extern crate syn;
 
-use proc_macro::{TokenStream, Literal};
+use proc_macro::{TokenStream};
 
-use syn::{Data, Fields, Variant, punctuated,token };
-
-macro_rules! build_binary_literal {
-    () => {
-        
-    };
-}
+use syn::{ Variant, punctuated,token };
 
 pub fn enum_from_byte(variants: &punctuated::Punctuated<Variant, token::Comma>, 
                       name : &proc_macro2::Ident, 

@@ -6,7 +6,7 @@ extern crate syn;
 
 use proc_macro::TokenStream;
 
-use syn::{Data, Fields, Type };
+use syn::{Fields};
 
 
 pub fn struct_from_bytes(fields : &Fields, name : &proc_macro2::Ident) -> TokenStream

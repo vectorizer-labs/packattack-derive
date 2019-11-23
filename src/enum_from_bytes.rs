@@ -6,13 +6,15 @@ extern crate syn;
 
 use proc_macro::TokenStream;
 
-use syn::{Data, Fields, Variant, punctuated,token };
+use syn::{Fields, Variant, punctuated,token };
 
 pub fn enum_from_bytes(variants: &punctuated::Punctuated<Variant, token::Comma>, name : &proc_macro2::Ident) -> TokenStream
 {
+
     let clauses: Vec<_> = variants
         .iter()
-        .map(|variant| {
+        .map(|variant| 
+        {
             let ident = &variant.ident;
             let discriminant = &variant.discriminant;
             match &variant.fields {
@@ -68,7 +70,10 @@ pub fn enum_from_bytes(variants: &punctuated::Punctuated<Variant, token::Comma>,
         impl FromBytes for #name {
             fn read_from_bytes(bytes: &[u8], count : &mut usize) -> #name
             {
-                match &bytes[0]
+                //We want to read the bits 
+
+
+                match bytes[*count]
                 {
                     #(#clauses)*
                     _ => panic!("uh oh no match")

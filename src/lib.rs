@@ -8,9 +8,6 @@ extern crate proc_macro;
 
 extern crate proc_macro2;
 
-#[macro_use]
-extern crate syn;
-
 use proc_macro::TokenStream;
 
 use syn::{Data, Meta };
@@ -50,7 +47,10 @@ pub fn from_byte(input: TokenStream) -> TokenStream {
     //gather size and bitmask attributes
     let size_in_bits : Option<syn::Lit> = get_attribute_value(&ast, "size_in_bits");
 
-    let s_i_b_value = match size_in_bits
+    //gather size and bitmask attributes
+    let byte_size : Option<syn::Lit> = get_attribute_value(&ast, "repr(u8)");
+
+    let size_in_bits_value = match size_in_bits
     {
         Some(sib) => 
         {
@@ -63,7 +63,7 @@ pub fn from_byte(input: TokenStream) -> TokenStream {
     match ast.data {
         Data::Enum(ref data_enum) =>
         {
-            enum_from_byte::enum_from_byte(&data_enum.variants, name, s_i_b_value)
+            enum_from_byte::enum_from_byte(&data_enum.variants, name, size_in_bits_value)
         },
         _ => panic!(
             "deriving `FromByte` can be applied only to enums, {} is neither",
@@ -95,8 +95,8 @@ fn get_attribute_value(ast: &syn::DeriveInput, token : &str) -> Option<syn::Lit>
                         }
                         
                     },
-                    Meta::Path(path) => {},
-                    Meta::List(meta_list) => {}
+                    Meta::Path(_path) => {},
+                    Meta::List(_meta_list) => {}
                 }
             },
             _ => return None
