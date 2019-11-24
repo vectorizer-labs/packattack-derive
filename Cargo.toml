@@ -3,6 +3,9 @@ name = "packattack-derive"
 version = "0.2.0"
 authors = ["Ethan Spurlock <ethan@spurlock.io>"]
 edition = "2018"
+description = "A library for parsing packet grammers written only in Rust structs and enums"
+license = "MIT"
+keywords = ["packet","derive"]
 
 
 [dependencies]
