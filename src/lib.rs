@@ -10,60 +10,40 @@ extern crate proc_macro2;
 
 use proc_macro::TokenStream;
 
-use syn::{Data, Meta };
+use syn::{Data, Meta};
 
-mod enum_from_bytes;
-mod enum_from_byte;
+mod enum_from_bitreader;
+mod struct_from_bitreader;
 
-mod struct_from_bytes;
-
-
-#[proc_macro_derive(FromBytes,attributes(start_byte,end_byte))]
-pub fn from_bytes(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(FromBitReader, attributes(size_in_bits))]
+pub fn from_bit_reader(input: TokenStream) -> TokenStream {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let name = &ast.ident;
-
-    match ast.data {
-        Data::Enum(ref data_enum) =>
-        {
-            enum_from_bytes::enum_from_bytes(&data_enum.variants, name)
-        },
-        Data::Struct(ref data_struct) =>
-        {
-            struct_from_bytes::struct_from_bytes(&data_struct.fields, name)
-        }
-        _ => panic!(
-            "`FromBytes` can be applied only to enums or structs, {} is neither",
-            name
-        ),
-    }
-}
-
-#[proc_macro_derive(FromByte, attributes(size_in_bits, bitmask))]
-pub fn from_byte(input: TokenStream) -> TokenStream {
-    let ast: syn::DeriveInput = syn::parse(input).unwrap();
-    let name = &ast.ident;
-
-    //gather size and bitmask attributes
-    let size_in_bits : Option<syn::Lit> = get_attribute_value(&ast, "size_in_bits");
-
-    //gather size and bitmask attributes
-    let byte_size : Option<syn::Lit> = get_attribute_value(&ast, "repr(u8)");
-
-    let size_in_bits_value = match size_in_bits
-    {
-        Some(sib) => 
-        {
-            (quote!{#sib}).to_string().parse::<usize>().unwrap()
-        },
-        None => panic!("No size_in_bits attribute found!")
-    };
 
     //TODO parse attributes and pass them down
     match ast.data {
         Data::Enum(ref data_enum) =>
         {
-            enum_from_byte::enum_from_byte(&data_enum.variants, name, size_in_bits_value)
+            //gather size attribute
+            //we need to know the size of the discriminant of the enum 
+            //so we can allocate the right size for it
+            let size_in_bits : Option<syn::Lit> = get_attribute_value(&ast, "size_in_bits");
+
+            let size_in_bits_value = match size_in_bits
+            {
+                Some(sib) => 
+                {
+                    //parse and unwrap the size_in_bits
+                    (quote!{#sib}).to_string().parse::<usize>().unwrap()
+                },
+                None => panic!("No size_in_bits attribute found!")
+            };
+
+            enum_from_bitreader::enum_from_bitreader(&data_enum.variants, name, size_in_bits_value)
+        },
+        Data::Struct(ref data_struct) =>
+        {
+            struct_from_bitreader::struct_from_bitreader(&data_struct.fields, name)
         },
         _ => panic!(
             "deriving `FromByte` can be applied only to enums, {} is neither",

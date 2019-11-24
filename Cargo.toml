@@ -9,7 +9,8 @@ edition = "2018"
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["derive"] }
-packattack = { path = "C:\\Users\\Ethan\\Desktop\\packattack"  }
+packattack = { path = "C:\\Users\\Ethan\\Desktop\\packattack" }
+bitreader = "0.3.2"
 
 [lib]
 proc-macro = true
