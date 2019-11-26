@@ -33,8 +33,7 @@ pub fn from_bit_reader(input: TokenStream) -> TokenStream {
             {
                 Some(sib) => 
                 {
-                    //parse and unwrap the size_in_bits
-                    (quote!{#sib}).to_string().parse::<usize>().unwrap()
+                    sib
                 },
                 None => panic!("No size_in_bits attribute found!")
             };

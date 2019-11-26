@@ -44,11 +44,10 @@ pub fn struct_from_bitreader(fields : &Fields, name : &proc_macro2::Ident) -> To
 
     let blah = quote!{
         use bitreader::BitReader;
+        use std::error::Error;
         use std::result;
 
-        //TODO: Expand this definition to more errors
-        /// Result type for those BitReader operations that can fail.
-        pub type Result<T> = result::Result<T, bitreader::BitReaderError>;
+        pub type Result<T> = result::Result<T, Box<dyn Error>>;
 
         impl FromBitReader for #name 
         {
