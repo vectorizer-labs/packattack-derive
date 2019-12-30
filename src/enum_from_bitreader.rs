@@ -6,7 +6,7 @@ extern crate syn;
 
 use proc_macro::TokenStream;
 
-use syn::{Fields, Variant, punctuated,token };
+use syn::{Fields, Variant, punctuated, token };
 
 pub fn enum_from_bitreader(variants: &punctuated::Punctuated<Variant, token::Comma>, 
     name : &proc_macro2::Ident, 
@@ -35,12 +35,13 @@ pub fn enum_from_bitreader(variants: &punctuated::Punctuated<Variant, token::Com
                 },
                 Fields::Unnamed(fields_unnamed) => 
                 {
+
                     let fields : Vec::<_> = fields_unnamed.unnamed
                     .iter().map(|field|
                     {
                         quote!
                         {
-                            <#field>::from_bitreader(reader).unwrap()
+                            <#field>::from_bitreader(reader).await?
                         }
                     })
                     .collect();
@@ -70,15 +71,12 @@ pub fn enum_from_bitreader(variants: &punctuated::Punctuated<Variant, token::Com
     let reader_literal = get_reader_literal(size_in_bits);
 
     let blah = quote! {
-        use bitreader::BitReader;
-        use std::error::Error;
-        use std::result;
-
-        pub type Result<T> = result::Result<T, Box<dyn Error>>;
-
-        impl FromBitReader for #name {
-            fn from_bitreader(reader : &mut BitReader) -> Result<#name>
+        #[async_trait::async_trait]
+        impl<R> FromBitReader<R> for #name where Self : Sized, R : Read + std::marker::Unpin + std::marker::Send
+        {
+            async fn from_bitreader(reader : &mut bitreader_async::BitReader<R>) -> Result<#name>
             {
+
                 match usize::from(#reader_literal)
                 {
                     #(#clauses)*
@@ -100,11 +98,11 @@ fn get_reader_literal(size_in_bits : syn::Lit) -> proc_macro2::TokenStream
     match size_in_bits
     {
         Lit::Int(lit_int) => get_size_reader_literal(lit_int.base10_parse::<usize>().unwrap()),
-        Lit::Str(lit_str) => {
-
+        Lit::Str(lit_str) => 
+        {
             let identifier = Ident::new(lit_str.value().as_str(),lit_str.span());
 
-            quote!{ #identifier::from_bitreader(reader).unwrap() }
+            quote!{ #identifier::from_bitreader(reader).await? }
         },
         _=> panic!(" Packattack only supports type literals and usizes as size_in_bytes!")
     }
@@ -115,10 +113,11 @@ fn get_size_reader_literal(size_in_bits : usize) -> proc_macro2::TokenStream
     match size_in_bits
     {
         0 => panic!("Tried to build a reader with a size of 0."),
-        1..=8 => quote!{ reader.read_u8(#size_in_bits as u8).unwrap() },
-        9..=16 => quote!{ reader.read_u16(#size_in_bits as u16).unwrap()  },
-        17..=32 => quote!{ reader.read_u32(#size_in_bits as u32).unwrap() },
-        33..=64 => quote!{ reader.read_u64(#size_in_bits as u64).unwrap() },
-        _ => panic!("Tried to buld a reader with a size of greater than 64 bits! This isn't yet supported.")
+        1..=8 => quote!{ reader.read_bits::<u8>(#size_in_bits).await? },
+        9..=16 => quote!{ reader.read_bits::<u16>(#size_in_bits).await?  },
+        17..=32 => quote!{ reader.read_bits::<u32>(#size_in_bits).await? },
+        33..=64 => quote!{ reader.read_bits::<u64>(#size_in_bits).await? },
+        65..=128 => quote!{ reader.read_bits::<u128>(#size_in_bits).await? },
+        _ => panic!("Tried to buld a reader with a size of greater than 128 bits! This isn't yet supported.")
     }
 }
