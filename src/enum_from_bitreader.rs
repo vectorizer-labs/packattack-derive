@@ -35,7 +35,6 @@ pub fn enum_from_bitreader(variants: &punctuated::Punctuated<Variant, token::Com
                 },
                 Fields::Unnamed(fields_unnamed) => 
                 {
-
                     let fields : Vec::<_> = fields_unnamed.unnamed
                     .iter().map(|field|
                     {
@@ -86,8 +85,6 @@ pub fn enum_from_bitreader(variants: &punctuated::Punctuated<Variant, token::Com
         }
     };
 
-    //println!("{}", blah);
-
     blah.into()
 }
 
@@ -113,11 +110,11 @@ fn get_size_reader_literal(size_in_bits : usize) -> proc_macro2::TokenStream
     match size_in_bits
     {
         0 => panic!("Tried to build a reader with a size of 0."),
-        1..=8 => quote!{ reader.read_bits::<u8>(#size_in_bits).await? },
-        9..=16 => quote!{ reader.read_bits::<u16>(#size_in_bits).await?  },
-        17..=32 => quote!{ reader.read_bits::<u32>(#size_in_bits).await? },
-        33..=64 => quote!{ reader.read_bits::<u64>(#size_in_bits).await? },
-        65..=128 => quote!{ reader.read_bits::<u128>(#size_in_bits).await? },
-        _ => panic!("Tried to buld a reader with a size of greater than 128 bits! This isn't yet supported.")
+        1..=8 => quote!{ reader.read_be_bits(#size_in_bits).await? },
+        //9..=16 => quote!{ reader.read_be_bits::<u16>(#size_in_bits).await?  },
+        //17..=32 => quote!{ reader.read_bits::<u32>(#size_in_bits).await? },
+        //33..=64 => quote!{ reader.read_bits::<u64>(#size_in_bits).await? },
+        //65..=128 => quote!{ reader.read_bits::<u128>(#size_in_bits).await? },
+        _ => panic!("Tried to buld a reader with a size of greater than 8 bits! This isn't yet supported.")
     }
 }

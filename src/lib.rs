@@ -16,7 +16,7 @@ mod enum_from_bitreader;
 mod struct_from_bitreader;
 mod util;
 
-#[proc_macro_derive(FromBitReader, attributes(size_in_bits, expose, flag))]
+#[proc_macro_derive(FromBitReader, attributes(size_in_bits, expose, flag, length))]
 pub fn from_bit_reader(input: TokenStream) -> TokenStream {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
     let name = &ast.ident;
@@ -27,19 +27,15 @@ pub fn from_bit_reader(input: TokenStream) -> TokenStream {
             //gather size attribute
             //we need to know the size of the discriminant of the enum 
             //so we can allocate the right size for it
-            let size_in_bits : Option<syn::Lit> = util::get_attribute_value(&ast.attrs, "size_in_bits");
-
-            let size_in_bits_value = match size_in_bits
+            if let Some(size_in_bits) = util::get_meta_attribute(&ast.attrs, "size_in_bits")
             {
-                Some(sib) => 
-                {
-                    sib
-                },
-                None => panic!("No size_in_bits attribute found!")
-            };
-
-            enum_from_bitreader::enum_from_bitreader(&data_enum.variants, name, size_in_bits_value)
-        },
+                enum_from_bitreader::enum_from_bitreader(&data_enum.variants, name, size_in_bits)
+            }
+            else
+            {
+                panic!("No size_in_bits attribute found!")
+            }
+        }
         Data::Struct(ref data_struct) =>
         {
             struct_from_bitreader::struct_from_bitreader(&data_struct.fields, name)
