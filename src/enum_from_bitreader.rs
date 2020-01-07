@@ -70,12 +70,13 @@ pub fn enum_from_bitreader(variants: &punctuated::Punctuated<Variant, token::Com
     let reader_literal = get_reader_literal(size_in_bits);
 
     let blah = quote! {
-        #[async_trait::async_trait]
-        impl<R> FromBitReader<R> for #name where Self : Sized, R : Read + std::marker::Unpin + std::marker::Send
+        #[async_trait]
+        impl<R> FromBitReader<crate::ERROR, R> for #name 
+        where Self : Sized,
+            R : Read + std::marker::Unpin + std::marker::Send
         {
-            async fn from_bitreader(reader : &mut bitreader_async::BitReader<R>) -> Result<#name>
+            async fn from_bitreader(reader : &mut bitreader_async::BitReader<R>) -> Result<Self,crate::ERROR>
             {
-
                 match usize::from(#reader_literal)
                 {
                     #(#clauses)*

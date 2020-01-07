@@ -14,7 +14,6 @@ mod unnamed_fields;
 
 
 //TODO: Break each match out into its own functions
-
 pub fn struct_from_bitreader(fields : &Fields, name : &proc_macro2::Ident) -> TokenStream
 {
     match fields 

@@ -25,12 +25,13 @@ pub fn get_named_fields(fields_named: &syn::FieldsNamed, name : &proc_macro2::Id
     }).collect();
 
     let blah = quote!{
-
-        #[async_trait::async_trait]
-        impl<R> FromBitReader<R> for #name where Self : Sized, R : Read + std::marker::Unpin + std::marker::Send
+        #[async_trait]
+        impl<R> FromBitReader<crate::ERROR, R> for #name 
+        where Self : Sized,
+            R : Read + std::marker::Unpin + std::marker::Send
         {
             #[allow(trivial_numeric_casts)]
-            async fn from_bitreader(reader : &mut bitreader_async::BitReader<R>) -> Result<#name>
+            async fn from_bitreader(reader : &mut bitreader_async::BitReader<R>) -> Result<Self, crate::ERROR>
             {
                 Ok(#name
                 {

@@ -35,7 +35,8 @@ pub fn get_unamed_fields(fields_unnamed: &syn::FieldsUnnamed, name : &proc_macro
                 None => panic!(" flag value 'flag' was set but marked type wasn't an 'Option' type!")
             };
 
-            //otherwise we're still inside the byte so just read from the byte
+            //We've got an option type so we're going to match 
+            //on the expression given in the attribute
             return quote! { { 
                     match #name_expr
                     {
@@ -47,14 +48,14 @@ pub fn get_unamed_fields(fields_unnamed: &syn::FieldsUnnamed, name : &proc_macro
         else if let Some(length_expr) = get_meta_attribute_as_expr(&field.attrs, "length")
         {
 
-            //otherwise we're still inside the byte so just read from the byte
-            return quote! {
-                {
-                    let vec_buffer : Vec<u8> = reader.read_u8_slice_aligned( (#length_expr) as usize).await?;
-
-                    vec_buffer
-                }
-            }
+            //We want to read a slice of our buffer into a Vec<u8>
+            //read the length expression first then read the slice 
+            //we have to do this in case the length expression 
+            //includes a reference to the reader
+            return quote! { { 
+                let len = #length_expr; 
+                <#derivable>::from_bitreader_with_length(reader,len).await?
+            } }
         }
 
         //otherwise we're still inside the byte so just read from the byte
@@ -65,10 +66,12 @@ pub fn get_unamed_fields(fields_unnamed: &syn::FieldsUnnamed, name : &proc_macro
 
     let blah = quote!{
 
-        #[async_trait::async_trait]
-        impl<R> FromBitReader<R> for #name where Self : Sized, R : Read + std::marker::Unpin + std::marker::Send
+        #[async_trait]
+        impl<R> FromBitReader<crate::ERROR, R> for #name 
+        where Self : Sized,
+            R : Read + std::marker::Unpin + std::marker::Send
         {
-            async fn from_bitreader(reader : &mut bitreader_async::BitReader<R>) -> Result<#name>
+            async fn from_bitreader(reader : &mut bitreader_async::BitReader<R>) -> Result<Self, crate::ERROR>
             {
 
                 #(#exposed_fields)*
