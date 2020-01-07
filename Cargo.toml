@@ -1,9 +1,9 @@
 [package]
 name = "packattack-derive"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Ethan Spurlock <ethan@spurlock.io>"]
 edition = "2018"
-description = "A library for parsing packet grammers written only in Rust structs and enums"
+description = "A set of derive macros for parsing binary packet grammers written only in Rust structs and enums"
 license = "MIT"
 keywords = ["packet","derive"]
 repository = "https://github.com/vectorizer-labs/packattack-derive"
@@ -13,7 +13,6 @@ repository = "https://github.com/vectorizer-labs/packattack-derive"
 proc-macro2 = "1"
 quote = "1"
 syn = { version = "1", features = ["full"] }
-bitreader = "0.3.2"
 
 [lib]
 proc-macro = true

@@ -73,8 +73,8 @@ pub fn get_meta_attribute(attrs : &Vec<syn::Attribute>, token : &str) -> Option<
                     {
                         return Some(meta_name_value.lit)
                     },
-                    Meta::Path(path) => panic!("Packattack requires attributes to be meta name value pairs but a path {:#?} was found!", path),
-                    Meta::List(meta_list) => panic!("Packattack requires attributes to be meta name value pairs but a meta list {:#?} was found!", meta_list)
+                    Meta::Path(path) => panic!("Packattack requires attributes to be meta name value pairs but a path {} was found!", quote!{ #path } ),
+                    Meta::List(meta_list) => panic!("Packattack requires attributes to be meta name value pairs but a meta list {} was found!", quote!{ #meta_list } )
                 }
             }
         }
