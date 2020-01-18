@@ -23,14 +23,11 @@ pub fn struct_from_bitreader(fields : &Fields, name : &proc_macro2::Ident) -> To
             named_fields::get_named_fields(fields_named, name)
         },
         Fields::Unnamed(fields_unnamed) => 
-        {
-            
+        { 
             unnamed_fields::get_unamed_fields(fields_unnamed, name)
         },
         _ => panic!("Packattack only supports reading from structs with named fields")
-
     }
-    
 }
 
 
