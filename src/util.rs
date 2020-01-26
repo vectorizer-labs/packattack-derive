@@ -24,6 +24,18 @@ pub fn expr_from_meta_attribute(attr : syn::Meta) -> syn::Expr
     }
 }
 
+pub fn lit_from_meta_attribute(attr : syn::Meta) -> syn::Lit
+{
+    match attr
+    {
+        Meta::NameValue(meta_name_value) => 
+        {
+            return meta_name_value.lit
+        },
+        _ => panic!("Expected meta attribute '{}' to be a NameValue pair, but it was another type of attribute", quote!{ #attr } )
+    }
+}
+
 //Taken from :
 //https://stackoverflow.com/questions/55271857/how-can-i-get-the-t-from-an-optiont-when-using-syn
 //TODO: This is probably overkill for our use case so maybe come back and double check the logic
@@ -77,6 +89,8 @@ pub fn get_meta_attribute(attrs : &Vec<syn::Attribute>, token : &str) -> Option<
     return None;
 }
 
+
+
 /*
 If you're going to be reading attributes you should match using an 
 if let Meta::NameValue(name) = blah()
@@ -121,9 +135,9 @@ fn expr_from_lit(literal : syn::Lit) -> syn::Expr
     }
 }
 
-pub fn ident_from_string(name : String) -> syn::Ident
+pub fn ident_from_str(name : &str) -> syn::Ident
 {
-    match syn::parse_str::<syn::Ident>(name.as_str())
+    match syn::parse_str::<syn::Ident>(name)
     {
         Ok(ident) => ident,
         Err(_e) => panic!("Packattack internal  error: couldn't use the name of datatype {} as an identifier!", name)
