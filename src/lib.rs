@@ -14,7 +14,7 @@ mod struct_compiler;
 mod enum_compiler;
 mod attributes;
 
-use attributes::{ enums::*, ParentDataType };
+use attributes::{ enums::*, ParentDataType, get_hint_reader_literal };
 use struct_compiler::bit_index::{ bits_to_byte };
 
 #[allow(dead_code)]
@@ -22,10 +22,16 @@ mod util;
 
 use util::ident_from_str;
 
-#[proc_macro_derive(FromReader, attributes(size_in_bits, str, from_bytes, from_bits, expose, flag, length, discriminant))]
+#[proc_macro_derive(FromReader, attributes(size_in_bits, str, from_bytes, from_bits, expose, flag, length, discriminant, hint, payload))]
 pub fn from_reader(input: TokenStream) -> TokenStream 
 {
     let ast: syn::DeriveInput = syn::parse(input).unwrap();
+
+    let hinted = match get_hint_reader_literal(&ast.attrs, &ParentDataType::FromReader)
+    {
+        Some(hint_declares) => hint_declares,
+        None => quote!{}
+    };
 
     let (fin_data_structure, name, _size_in_bits) = build_data_structure(ast, ParentDataType::FromReader);
 
@@ -36,6 +42,8 @@ pub fn from_reader(input: TokenStream) -> TokenStream
         {
             async fn from_reader(reader : &mut R) -> Result<Self, crate::ERROR>
             {
+                #hinted
+
                 #fin_data_structure
             }
         }
@@ -66,10 +74,9 @@ pub fn from_bytes(input: TokenStream) -> TokenStream
 
         const #const_name : usize = #size;
 
-        impl Bitsize<[u8; #const_name]> for #name
+        impl Bitsize for #name
         {
             const SIZE_IN_BITS : usize = #size_in_bits;
-            const BUFFER : [u8; #const_name] = [0; #const_name];
         }
 
         impl FromBytes<crate::ERROR,[u8; #const_name]> for #name
@@ -81,7 +88,7 @@ pub fn from_bytes(input: TokenStream) -> TokenStream
         } 
     };
 
-    eprintln!("{}", fin);
+    //eprintln!("{}", fin);
 
     fin.into()
 }
@@ -90,6 +97,8 @@ fn build_data_structure(input: syn::DeriveInput, parent_data_type : ParentDataTy
 {
     
     let name = input.ident.clone();
+
+
     
     match input.data 
     {

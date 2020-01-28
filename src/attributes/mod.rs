@@ -1,4 +1,4 @@
-use crate::util::{ get_meta_attribute, lit_from_meta_attribute, ident_from_lit };
+use crate::util::{ get_meta_attribute, lit_from_meta_attribute, ident_from_lit, ident_from_str };
 
 pub mod enums;
 
@@ -14,17 +14,17 @@ pub enum FieldDataType
 {
     FromReader,
     FromBytes(FromBytesType),
-    FromBits
+    FromBits,
+    Payload
 }
+
+//TODO: Implement #[payload]
+
+//TODO: pass parent_has_size_hint : bool all the way down to fields.rs
 
 //Enum discriminant type also uses this getter
 pub fn get_field_type(attrs : &Vec<syn::Attribute>, parent_data_type : &ParentDataType) -> FieldDataType
 {
-    //If we're from bytes
-    //we can only read fields that are FromBytes
-    //override field type
-    if *parent_data_type == ParentDataType::FromBytes { return FieldDataType::FromBits; }
-
     //if this field is marked #[from_bytes]
     if let Some(_attr) = get_meta_attribute(attrs, "from_bytes")
     {
@@ -44,7 +44,17 @@ pub fn get_field_type(attrs : &Vec<syn::Attribute>, parent_data_type : &ParentDa
         return FieldDataType::FromBits;
     }
 
-    // from bytes is the default
+    //if this field is marked #[payload]
+    if let Some(_attr) = get_meta_attribute(attrs, "payload")
+    {
+        return FieldDataType::Payload;
+    }
+
+    //If we're from bytes
+    //we read fields that are FromBits by default
+    if *parent_data_type == ParentDataType::FromBytes { return FieldDataType::FromBits; }
+
+    //Otherwise FromReader is the default
     return FieldDataType::FromReader;
 }
 
@@ -63,7 +73,15 @@ pub fn get_expose_attribute(attrs : &Vec<syn::Attribute>) -> Option<syn::Ident>
     match get_meta_attribute(attrs, "expose")
     {
         Some(meta) => Some(ident_from_lit(lit_from_meta_attribute(meta))),
-        None => None
+        None => 
+        {
+            //if there's a hint then we need to expose this 
+            match get_meta_attribute(attrs, "hint")
+            {
+                Some(meta) => Some(ident_from_str("size_hint")),
+                None => None
+            }
+        }
     }
 }
 
@@ -74,12 +92,26 @@ pub enum FromBytesType
     SizeInBytes
 }
 
-/*
-pub fn get_size_in_bytes(attrs : &Vec<syn::Attribute>) -> syn::Lit
+pub fn get_hint_reader_literal(attrs : &Vec<syn::Attribute>, parent_data_type : &ParentDataType) -> Option<proc_macro2::TokenStream>
 {
-    match get_meta_attribute(attrs, "size_in_bytes")
+    if let Some(meta) = get_meta_attribute(attrs, "hint")
     {
-        Some(meta) => lit_from_meta_attribute(meta),
-        None => { panic!("Data Structures deriving FromBytes must define #[size_in_bytes]"); }
+        assert_eq!(parent_data_type, &ParentDataType::FromReader,"Can't use a hint on a type other than from_reader");
+
+        //get the hint type literal
+        let hint_type = lit_from_meta_attribute(meta);
+
+        //for now hard coded to FromReader but should easily be changable in the future
+        let reader_literal = enums::get_reader_literal(&hint_type, &FieldDataType::FromReader, false);
+
+        return Some(quote!{
+
+            let size_hint : usize = #reader_literal;
+            let mut buffer : Vec<u8> = vec![0; size_hint];
+            reader.read_exact(&mut buffer).await?;
+            let reader : &mut &[u8] =  &mut buffer.as_slice();
+        });
     }
-}*/
+
+    return None;
+}

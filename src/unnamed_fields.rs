@@ -67,7 +67,7 @@ pub fn get_unamed_fields(fields_unnamed: &syn::FieldsUnnamed, name : &proc_macro
     let blah = quote!{
 
         #[async_trait]
-        impl<R> FromBitReader<crate::ERROR, R> for #name 
+        impl<R> FromReader<crate::ERROR, R> for #name 
         where Self : Sized,
             R : Read + std::marker::Unpin + std::marker::Send
         {

@@ -47,25 +47,28 @@ pub struct EnumDiscriminant
     pub reader_literal : TokenStream
 }
 
-fn get_reader_literal(discriminant : &syn::Lit, discriminant_data_type : &FieldDataType, is_str : bool) -> TokenStream
+pub fn get_reader_literal(derivable : &syn::Lit, discriminant_data_type : &FieldDataType, is_str : bool) -> TokenStream
 {
-    match discriminant
+    match derivable
     {
         Lit::Int(lit_int) => 
         {
             //create the bitmask for this byte
             let bitmask : TokenStream = quote!{ ((1 << #lit_int) - 1) << (8 - #lit_int) };
 
-            let byte_token = match discriminant_data_type
+            match discriminant_data_type
             {
                 FieldDataType::FromReader => panic!("Packattack Internal Error: No byte token when reading from_reader!"),
-                _ => quote!{ bytes[0] }
-            };
-
-            // read the byte, mask it for the bits we want, 
-            //and bit shift them back to the beginning of the u8
-            //finally pass that value into from_u8
-            quote!{ (#byte_token & #bitmask) >> (8 - #lit_int) }
+                FieldDataType::FromBytes(_from_bytes_type) => quote!{ bytes[0] },
+                FieldDataType::FromBits => 
+                {
+                    // read the byte, mask it for the bits we want, 
+                    //and bit shift them back to the beginning of the u8
+                    //finally pass that value into from_u8
+                    quote!{ (bytes[0] & #bitmask) >> (8 - #lit_int) }
+                },
+                FieldDataType::Payload => panic!("Discriminants can't be a payload! Do you know what you're doing? Maybe read the docs...")
+            }
         }
         Lit::Str(lit_str) => 
         {

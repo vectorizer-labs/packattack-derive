@@ -16,13 +16,11 @@ pub fn get_struct(fields : &Fields, name : &proc_macro2::Ident, parent_data_type
 
     let first_field_data_type = data_types[0].clone();
 
-    let fill_first_array = match parent_data_type == ParentDataType::FromReader && 
-                                 first_field_data_type != FieldDataType::FromReader
+    let fill_first_array = match parent_data_type == ParentDataType::FromReader && first_field_data_type != FieldDataType::FromReader
     {
         true => quote!{ reader.read_exact(&mut array_1).await?; },
         false => quote!{ }
     };
-    
 
     //this literally just wraps the fields in a either a {} or () 
     //depending on if the fields are named or unnamed

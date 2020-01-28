@@ -15,13 +15,14 @@ pub fn bits_to_byte(leading_bits : &TokenStream) -> TokenStream
 pub fn get_bitmask(size_in_bits : &TokenStream, bits_consumed_inside_byte : &TokenStream) -> TokenStream
 {
     //create the bitmask for this byte // shift the mask by the number of bits already read in this byte
-    quote!{ ((1u8 << #size_in_bits) - 1u8) << ((8 - (#size_in_bits + #bits_consumed_inside_byte) ) as u8)  }
+    quote!{ ((1u8 << (#size_in_bits % 8)) - 1u8) << ((8 - (#size_in_bits + #bits_consumed_inside_byte) ) as u8)  }
 }
 
 
 //this gets byte index of a var inside an array 
 //i.e. [1..2]
-pub fn get_byte_indices(derivable : &syn::Type, total_bits_consumed : &TokenStream) -> (TokenStream, TokenStream)
+//TODO: for some reason reading a u16 is one index off
+pub fn get_byte_indices(derivable : &syn::Type, total_bits_consumed : &TokenStream, byte_token : TokenStream) -> (TokenStream, TokenStream)
 {
     //the byte where the number of bits already read lands
     let array_start = bits_to_byte_address(total_bits_consumed);
@@ -33,7 +34,7 @@ pub fn get_byte_indices(derivable : &syn::Type, total_bits_consumed : &TokenStre
 
     //TODO: If for some reason I decide to have different array names 
     //add the option back to this function
-    (quote!{ &bytes[#array_start .. #array_end] }, size_in_bits)
+    (quote!{ & #byte_token[#array_start .. #array_end] }, size_in_bits)
 }
 
 //This finds the byte that a var is inside
@@ -48,7 +49,7 @@ pub fn get_bit_indices_from_array(derivable : &syn::Type,
     get_bit_indices(derivable, total_bits_consumed, quote!{ #array_name[#byte] })
 }
 
-//This returns the bytes shifted to back to the front of the byte
+//This returns the bits masked from the #byte_token byte and shifted back to the front of the byte
 //ready for big endian reading
 pub fn get_bit_indices(derivable : &syn::Type, 
     total_bits_consumed : &TokenStream, 
@@ -68,7 +69,7 @@ pub fn get_bit_indices(derivable : &syn::Type,
     (quote!{ (#byte_token & #bitmask) >> (8 - (#size_in_bits + #bits_consumed_inside_byte)) }, size_in_bits)
 }
 
-//TODO: do better
+
 pub fn get_read_clause(derivable : &syn::Type, preceeding_bits : &TokenStream, field_data_type : FieldDataType,
     parent_data_type : ParentDataType, array_count : usize) -> (TokenStream, TokenStream)
 {
@@ -88,7 +89,7 @@ pub fn get_read_clause(derivable : &syn::Type, preceeding_bits : &TokenStream, f
                     {
                         FromBytesType::WithLength(len) => unimplemented!("TODO: Implement copy slice into BUFFER starting from preceeding_bits"),
                         FromBytesType::SizeInBytes => {
-                            let (address, size) = get_byte_indices(derivable, preceeding_bits);
+                            let (address, size) = get_byte_indices(derivable, preceeding_bits, quote!{ bytes });
                             (quote!{ <#derivable>::from_bytes(#address)? }, size)
                         }
                     }
@@ -97,7 +98,8 @@ pub fn get_read_clause(derivable : &syn::Type, preceeding_bits : &TokenStream, f
                 {
                     let (address, size) = get_bit_indices_from_array(derivable, preceeding_bits, ident_from_str("bytes"));
                     (quote!{ <#derivable>::from_bytes((#address).to_be_bytes())? }, size)
-                }
+                },
+                FieldDataType::Payload => unimplemented!("TODO : let the payload take the remaining bytes")
             }
         }
     }
@@ -119,23 +121,27 @@ fn handle_from_reader_parent(derivable : &syn::Type, preceeding_bits : &TokenStr
             match from_bytes_type
             {
                 //there's a length so find the slice 
-                FromBytesType::WithLength(len) => 
-                {
+                FromBytesType::WithLength(len) => unimplemented!(),
+                /*{
+                    
                     (quote!{{let buffer = vec![0; #len];
                             reader.read_exact(buffer.as_mut_slice()).await?;
                             <#derivable>::from_reader(buffer.as_slice()).await?
                         }},
                         //TODO: fix this length to assign to a local variable outside this scope
                         quote!{ (#len * 8) })
-                },
+                },*/
                 //there's no length so there's a fixed size_in_bytes
                 //NOT BROKEN
                 FromBytesType::SizeInBytes => 
                 {
-                    (quote!{{let mut buffer = <#derivable>::BUFFER.clone();
-                            reader.read_exact(&mut buffer).await?;
-                            <#derivable>::from_bytes(buffer)?
-                        }}, quote!{ (<#derivable>::SIZE_IN_BITS) })
+                    //create a new array with the count + "array_" as the identifier
+                    let array_num = format!{"array_{}", array_count};
+
+                    let array_name : syn::Ident = ident_from_str(array_num.as_str());
+
+                    let (address, size) = get_byte_indices(derivable, preceeding_bits, quote!{ #array_name });
+                    (quote!{ <#derivable>::from_bytes((#address).try_into()?)? }, size)
                 }
             }
         },
@@ -149,6 +155,12 @@ fn handle_from_reader_parent(derivable : &syn::Type, preceeding_bits : &TokenStr
 
             (quote!{ <#derivable>::from_bytes((#address).to_be_bytes())? }, size)
 
+        },
+        FieldDataType::Payload => 
+        {
+            //pass in the reader here because if we're a payload in from reader
+            //then size_hint has already been defined which means reader is &mut &[u8]
+            ( quote!{ <#derivable>::from_bytes(reader)? }, quote!{ 0 })
         }
     }
 }
