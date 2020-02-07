@@ -6,19 +6,34 @@ pub mod enums;
 pub enum ParentDataType
 {
     FromReader,
-    FromBytes
+    FromBytes,
+    FromBits,
+    FromSlice
 }
 
-#[derive(Clone, Debug, PartialEq)]
+impl From<&ParentDataType> for FieldDataType
+{
+    fn from(ty : &ParentDataType) -> FieldDataType
+    {
+        match ty
+        {
+            ParentDataType::FromReader => FieldDataType::FromReader,
+            ParentDataType::FromBytes => FieldDataType::FromBytes,
+            ParentDataType::FromBits => FieldDataType::FromBits,
+            ParentDataType::FromSlice => FieldDataType::FromSlice
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum FieldDataType
 {
     FromReader,
-    FromBytes(FromBytesType),
+    FromSlice,
     FromBits,
+    FromBytes,
     Payload
 }
-
-//TODO: Implement #[payload]
 
 //TODO: pass parent_has_size_hint : bool all the way down to fields.rs
 
@@ -26,36 +41,19 @@ pub enum FieldDataType
 pub fn get_field_type(attrs : &Vec<syn::Attribute>, parent_data_type : &ParentDataType) -> FieldDataType
 {
     //if this field is marked #[from_bytes]
-    if let Some(_attr) = get_meta_attribute(attrs, "from_bytes")
-    {
-        
-        let from_bytes_type : FromBytesType = match get_meta_attribute(attrs, "length")
-        {
-            Some(meta) => FromBytesType::WithLength(lit_from_meta_attribute(meta)),
-            None => FromBytesType::SizeInBytes
-        };
+    if let Some(_attr) = get_meta_attribute(attrs, "from_bytes"){ return FieldDataType::FromBytes; }
 
-        return FieldDataType::FromBytes(from_bytes_type);
-    }
+    //if this field is marked #[from_bytes]
+    if let Some(_attr) = get_meta_attribute(attrs, "from_slice"){ return FieldDataType::FromSlice; }
 
     //if this field is marked #[from_bits]
-    if let Some(_attr) = get_meta_attribute(attrs, "from_bits")
-    {
-        return FieldDataType::FromBits;
-    }
+    if let Some(_attr) = get_meta_attribute(attrs, "from_bits"){ return FieldDataType::FromBits; }
 
     //if this field is marked #[payload]
-    if let Some(_attr) = get_meta_attribute(attrs, "payload")
-    {
-        return FieldDataType::Payload;
-    }
+    if let Some(_attr) = get_meta_attribute(attrs, "payload"){ return FieldDataType::Payload; }
 
-    //If we're from bytes
-    //we read fields that are FromBits by default
-    if *parent_data_type == ParentDataType::FromBytes { return FieldDataType::FromBits; }
-
-    //Otherwise FromReader is the default
-    return FieldDataType::FromReader;
+    //Otherwise default to the parent type
+    return FieldDataType::from(parent_data_type);
 }
 
 //This gets the discriminant for fields in clauses.rs
@@ -85,12 +83,20 @@ pub fn get_expose_attribute(attrs : &Vec<syn::Attribute>) -> Option<syn::Ident>
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+/*
+#[derive(Clone)]
 pub enum FromBytesType
 {
     WithLength(syn::Lit),
     SizeInBytes
-}
+}*/
+
+/*
+let from_bytes_type : FromBytesType = match get_meta_attribute(attrs, "length")
+{
+    Some(meta) => FromBytesType::WithLength(lit_from_meta_attribute(meta)),
+    None => FromBytesType::SizeInBytes
+};*/
 
 pub fn get_hint_reader_literal(attrs : &Vec<syn::Attribute>, parent_data_type : &ParentDataType) -> Option<proc_macro2::TokenStream>
 {

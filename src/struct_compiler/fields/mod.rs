@@ -1,31 +1,84 @@
 use proc_macro2::TokenStream;
-use crate::struct_compiler::bit_index::{ bits_to_byte_address, get_read_clause };
 
-use crate::util::{ ident_from_str, get_meta_attribute, get_option_inner_type, expr_from_meta_attribute };
+use crate::util::{ ident_from_str };
 use crate::attributes::{ get_field_type, ParentDataType, FieldDataType, get_expose_attribute };
 
-///returns a vec of fields
-pub fn get_fields(fields: &syn::Fields, 
-    predicate : TokenStream, 
-    parent_data_type : ParentDataType) -> (Vec<TokenStream>,Vec<FieldDataType>, Vec<TokenStream>, TokenStream)
-{
-    //TODO: turn these into syn:: Types so they have more parser checks
-    let mut sizes : Vec<TokenStream> = Vec::new();
+mod derivable;
+pub mod from_bits;
+pub mod from_bytes;
+pub mod from_reader;
+pub mod from_slice;
 
+use derivable::{ Derivable, get_derivable};
+
+///Collects the data for the fields in a first attribute reading pass
+pub fn get_fields(fields: &syn::Fields, predicate : syn::Expr, parent_data_type : ParentDataType) 
+    -> (Vec<TokenStream>, TokenStream)//(Vec<(FieldDataType, Derivable, TokenStream, Option<syn::Ident>, Option<syn::Ident>)>, TokenStream)
+{
+    //
+    let mut sizes : Vec<syn::Expr> = Vec::new();
+
+    //push a predicate so the first type knows its index starts at predicate_bits
+    sizes.push(predicate);
+
+    let mut array_count : usize = 0;
+
+    let field_data = fields.iter()
+    .map(|field|
+    {
+        //collect the field_data_types in a first pass map()
+        let data_type = get_field_type(&field.attrs, &parent_data_type);
+
+        //collect all the var types
+        let derivable = get_derivable(&field);
+
+        let preceeding_bits = quote! {( #(#sizes)+*) };
+
+        //push our size to the sizes vec
+        sizes.push(derivable.get_size_in_bits());
+
+        //if this field is #[expose = ""] then push the declaration
+        let expose_attribute = get_expose_attribute(&field.attrs);
+
+        let clause = match data_type
+        {
+            FieldDataType::FromBits => from_bits::get_field(parent_data_type, derivable, &preceeding_bits),
+            FieldDataType::FromBytes => from_bytes::get_field(parent_data_type, derivable, &preceeding_bits),
+            FieldDataType::FromSlice => from_slice::get_field(parent_data_type, derivable, &preceeding_bits),
+            FieldDataType::FromReader => from_reader::get_field(parent_data_type, derivable, &preceeding_bits),
+            //TODO: Payload
+            _ => unimplemented!("Lol gottem!")
+        };
+
+        //TODO: Option wrapper here
+
+        //the full clause associated with this var
+        //this unwraps to return a derivable
+        //if this field has an identifier then tack it on the front of the clause
+        match field.ident.clone()
+        {
+            Some(ident) => quote!{ #ident : #clause },
+            None => clause
+        }
+
+        //(data_type, derivable, preceeding_bits, expose_attribute, ident)
+
+    }).collect();
+
+    let total_size_in_bits = quote! {( #(#sizes)+*) };
+
+    (field_data, total_size_in_bits)
+}
+
+    /*
     //a list of declarations that will go at the top of the function
     let mut declares : Vec<TokenStream> = Vec::new();
 
     //a list of array identifiers and their declarations
     let mut arrays : Vec<syn::Ident> = Vec::new();
-    
-    //push a predicate so the first type knows its index starts at predicate_bits
-    sizes.push(quote!{ #predicate });
+    */
 
-    let mut array_count : usize = 0;
-
-    //collect the field_data_types in a first pass map()
-    let data_types : Vec<FieldDataType> = fields.iter().map(|field| { get_field_type(&field.attrs, &parent_data_type) }).collect();
-
+    /*
     //if the parent type is from_reader and the first field is not from_reader
     //push the first array on the arrays vec
     if parent_data_type == ParentDataType::FromReader && data_types[0] != FieldDataType::FromReader { push_array_name(&mut arrays, &mut array_count); }
@@ -44,9 +97,7 @@ pub fn get_fields(fields: &syn::Fields,
             None => &field.ty
         };
 
-        //Add up all the previous vars to find this var's preceeding_bits (starting position)
-        //The compiler optimizes all these adds away at compile time using constant folding
-        let preceeding_bits = quote! {( #(#sizes)+*) };
+        
 
         //if we're deriving from bits
         let field_data_type : FieldDataType = data_types[field_count].clone();
@@ -120,14 +171,7 @@ pub fn get_fields(fields: &syn::Fields,
             None => clause
         };
 
-        //the full clause associated with this var
-        //this unwraps to return a derivable
-        //if this field has an identifier then tack it on the front of the clause
-        match field.ident.clone()
-        {
-            Some(ident) => quote!{ #ident : #clause },
-            None => clause
-        }
+        
 
     }).collect();
 
@@ -143,6 +187,8 @@ pub fn get_fields(fields: &syn::Fields,
 
     (clauses, data_types, declares, total_size_in_bits)
 }
+*/
+
 
 pub fn push_exposed_attribute(declares : &mut Vec<TokenStream>, expose_name : syn::Ident, derivable : &syn::Type, clause : TokenStream) -> TokenStream
 {
@@ -170,6 +216,7 @@ pub fn push_array_name(arrays : &mut Vec<syn::Ident>,
     array_name
 }
 
+/*
 pub fn push_array_declare(arrays : &mut Vec<syn::Ident>, 
     declares : &mut Vec<TokenStream>,
     bit_index : TokenStream)
@@ -181,8 +228,8 @@ pub fn push_array_declare(arrays : &mut Vec<syn::Ident>,
 
     //println!("{}", quote!{ #bit_index });
 
-    let byte_size = bits_to_byte_address(&bit_index);
+    let byte_size = bits_to_byte_ceiling_floor(&bit_index);
 
     //push the declaration of the array
     declares.push( quote!{ let mut #array_name : [u8; #byte_size ] = [0; #byte_size ];});
-}
+}*/

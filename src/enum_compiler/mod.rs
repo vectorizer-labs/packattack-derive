@@ -1,9 +1,10 @@
-use syn::{ Variant, token::Comma, punctuated::Punctuated };
-use proc_macro2::TokenStream;
-use crate::attributes::{ ParentDataType, enums::EnumDiscriminant };
+//use syn::{ Variant, token::Comma, punctuated::Punctuated };
+//use proc_macro2::TokenStream;
+//use crate::attributes::{ ParentDataType, enums::EnumDiscriminant };
 
-mod clauses;
+//mod clauses;
 
+/*
 //TODO: Enums can't be from_bytes? for now...
 pub fn get_enum(variants: &Punctuated<Variant, Comma>, 
     name : &proc_macro2::Ident, 
@@ -28,4 +29,4 @@ pub fn get_enum(variants: &Punctuated<Variant, Comma>,
     };
 
     fin_enum
-}
+}*/

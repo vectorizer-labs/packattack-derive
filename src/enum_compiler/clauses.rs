@@ -4,6 +4,7 @@ use crate::struct_compiler;
 use crate::attributes::{ ParentDataType, FieldDataType, get_discriminant, enums::EnumDiscriminant };
 use proc_macro2::TokenStream;
 
+/*
 pub fn get_clauses(variants: &Punctuated<Variant, Comma>, 
     name : &proc_macro2::Ident, 
     attributes : &EnumDiscriminant,
@@ -86,7 +87,7 @@ pub fn get_clauses(variants: &Punctuated<Variant, Comma>,
     .collect();
 
     (fin_vars, global_declares)
-}
+}*/
 
 
 //This whole business is a big mess due to the nature of allowing the enum discriminant 
@@ -143,6 +144,6 @@ fn get_first_byte_assignment(first_field_data_type : &FieldDataType,
         },
         //if the parent type isn't from reader then we're not creating arrays anyway
         //so do nothing
-        ParentDataType::FromBytes => quote!{}
+        _ => quote!{}
     }
 }

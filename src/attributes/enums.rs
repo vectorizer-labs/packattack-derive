@@ -59,7 +59,7 @@ pub fn get_reader_literal(derivable : &syn::Lit, discriminant_data_type : &Field
             match discriminant_data_type
             {
                 FieldDataType::FromReader => panic!("Packattack Internal Error: No byte token when reading from_reader!"),
-                FieldDataType::FromBytes(_from_bytes_type) => quote!{ bytes[0] },
+                FieldDataType::FromBytes => quote!{ bytes[0] },
                 FieldDataType::FromBits => 
                 {
                     // read the byte, mask it for the bits we want, 
@@ -67,6 +67,7 @@ pub fn get_reader_literal(derivable : &syn::Lit, discriminant_data_type : &Field
                     //finally pass that value into from_u8
                     quote!{ (bytes[0] & #bitmask) >> (8 - #lit_int) }
                 },
+                FieldDataType::FromSlice => quote!{ 0 },
                 FieldDataType::Payload => panic!("Discriminants can't be a payload! Do you know what you're doing? Maybe read the docs...")
             }
         }

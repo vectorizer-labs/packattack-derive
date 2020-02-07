@@ -1,13 +1,11 @@
 use proc_macro2::TokenStream;
-use crate::attributes::{ ParentDataType, FieldDataType, FromBytesType };
-use crate::util::{ ident_from_str };
 
-pub fn bits_to_byte_address(leading_bits : &TokenStream) -> TokenStream
+pub fn bits_to_byte_floor(leading_bits : &TokenStream) -> TokenStream
 {
     quote!{ (#leading_bits / 8) }
 }
 
-pub fn bits_to_byte(leading_bits : &TokenStream) -> TokenStream
+pub fn bits_to_byte_ceiling(leading_bits : &TokenStream) -> TokenStream
 {
     quote!{ ((#leading_bits + 7) / 8) }
 }
@@ -21,30 +19,43 @@ pub fn get_bitmask(size_in_bits : &TokenStream, bits_consumed_inside_byte : &Tok
 
 //this gets byte index of a var inside an array 
 //i.e. [1..2]
-//TODO: for some reason reading a u16 is one index off
-pub fn get_byte_indices(derivable : &syn::Type, total_bits_consumed : &TokenStream, byte_token : TokenStream) -> (TokenStream, TokenStream)
+pub fn get_byte_indices(derivable : &syn::Type, total_bits_consumed : &TokenStream, byte_token : TokenStream) -> TokenStream
 {
     //the byte where the number of bits already read lands
-    let array_start = bits_to_byte_address(total_bits_consumed);
+    let array_start = bits_to_byte_floor(total_bits_consumed);
 
     let size_in_bits = quote!{ (<#derivable>::SIZE_IN_BITS) };
 
     //the byte where the number of bits already read + the size of this var lands
-    let array_end = bits_to_byte_address(&(quote!{ (#total_bits_consumed + #size_in_bits) }));
+    let array_end = bits_to_byte_floor(&(quote!{ (#total_bits_consumed + #size_in_bits) }));
 
-    //TODO: If for some reason I decide to have different array names 
-    //add the option back to this function
-    (quote!{ & #byte_token[#array_start .. #array_end] }, size_in_bits)
+    quote!{ & #byte_token[#array_start .. #array_end] }
 }
+
+pub fn get_slice_indices(derivable : &syn::Type, total_bits_consumed : &TokenStream) -> TokenStream
+{
+    quote!{ 
+        if buf.len() > self.len() { return Err(Error::new(std::io::ErrorKind::UnexpectedEof, "Slice wasn't long enough!")); }
+
+        //cut the slice at <derivable>::size_in_bytes
+        let (a, b) = slice.split_at(<#derivable>::SIZE_IN_BYTES);
+        //update slice len
+        *slice = b;
+
+        a.try_into().expect("Packattack Internal Error : Slice with incorrect length! This should be unreachable due to check. Please open an issue.")
+    }
+}
+
+
 
 //This finds the byte that a var is inside
 //indexes it inside the current array using that byte
 pub fn get_bit_indices_from_array(derivable : &syn::Type, 
     total_bits_consumed : &TokenStream, 
-    array_name : syn::Ident) -> (TokenStream, TokenStream)
+    array_name : syn::Ident) -> TokenStream
 {
     //find the byte I'm in
-    let byte = bits_to_byte_address(total_bits_consumed);
+    let byte = bits_to_byte_floor(total_bits_consumed);
 
     get_bit_indices(derivable, total_bits_consumed, quote!{ #array_name[#byte] })
 }
@@ -53,7 +64,7 @@ pub fn get_bit_indices_from_array(derivable : &syn::Type,
 //ready for big endian reading
 pub fn get_bit_indices(derivable : &syn::Type, 
     total_bits_consumed : &TokenStream, 
-    byte_token : TokenStream) -> (TokenStream, TokenStream)
+    byte_token : TokenStream) -> TokenStream
 {
     //this is the number of 
     let bits_consumed_inside_byte = quote!{ (#total_bits_consumed % 8) };
@@ -66,10 +77,10 @@ pub fn get_bit_indices(derivable : &syn::Type,
     // read the byte, mask it for the bits we want, 
     //and bit shift them back to the beginning of the u8
     //finally pass that value into from_u8
-    (quote!{ (#byte_token & #bitmask) >> (8 - (#size_in_bits + #bits_consumed_inside_byte)) }, size_in_bits)
+    quote!{ (#byte_token & #bitmask) >> (8 - (#size_in_bits + #bits_consumed_inside_byte)) }
 }
 
-
+/*
 pub fn get_read_clause(derivable : &syn::Type, preceeding_bits : &TokenStream, field_data_type : FieldDataType,
     parent_data_type : ParentDataType, array_count : usize) -> (TokenStream, TokenStream)
 {
@@ -88,9 +99,15 @@ pub fn get_read_clause(derivable : &syn::Type, preceeding_bits : &TokenStream, f
                     match from_bytes_type
                     {
                         FromBytesType::WithLength(len) => unimplemented!("TODO: Implement copy slice into BUFFER starting from preceeding_bits"),
-                        FromBytesType::SizeInBytes => {
-                            let (address, size) = get_byte_indices(derivable, preceeding_bits, quote!{ bytes });
-                            (quote!{ <#derivable>::from_bytes(#address)? }, size)
+                        FromBytesType::SizeInBytes => 
+                        {
+                            let size_in_bytes = bits_to_byte_ceiling(&quote!{ <#derivable>::SIZE_IN_BITS });
+
+                            (quote!{ 
+                                let (a, b) = bytes.split_at(#size_in_bytes);
+                                *bytes = b;
+                                <#derivable>::from_bytes(a.try_into().expect("Packattack Internal Error: Slice was the wrong size for type"))
+                            }, quote!{ 0 })
                         }
                     }
                 },
@@ -163,4 +180,4 @@ fn handle_from_reader_parent(derivable : &syn::Type, preceeding_bits : &TokenStr
             ( quote!{ <#derivable>::from_bytes(reader)? }, quote!{ 0 })
         }
     }
-}
+}*/
