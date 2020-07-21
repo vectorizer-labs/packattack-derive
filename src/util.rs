@@ -77,7 +77,11 @@ pub fn ident_from_lit( literal : syn::Lit) -> syn::Ident
         syn::Lit::Str(lit_str) => 
         {
             let str_value = lit_str.value();
-            syn::parse_str::<syn::Ident>(str_value.as_str()).unwrap()
+            match syn::parse_str::<syn::Ident>(str_value.as_str())
+            {
+                Ok(foo) => foo,
+                Err(e) => panic!("PackAttack : Failed to parse Identifier from String Literal : '{}'", str_value)
+            }
         },
         _=> panic!(" Packattack only supports string literals as expose name!")
     }
@@ -90,11 +94,19 @@ fn expr_from_lit(literal : syn::Lit) -> syn::Expr
         syn::Lit::Str(lit_str) => 
         {
             let str_value = lit_str.value();
-            syn::parse_str::<syn::Expr>(str_value.as_str()).unwrap()
+            match syn::parse_str::<syn::Expr>(str_value.as_str())
+            {
+                Ok(foo) => foo,
+                Err(e) => panic!("PackAttack : Failed to parse Expression from String Literal : '{}'", str_value)
+            }
         },
         syn::Lit::Int(lit_int) => 
         {
-            syn::parse_str::<syn::Expr>(lit_int.to_string().as_str()).unwrap()
+            match syn::parse_str::<syn::Expr>(lit_int.to_string().as_str())
+            {
+                Ok(foo) => foo,
+                Err(e) => panic!("PackAttack : Failed to parse Expression from Int Literal : {}", lit_int.to_string())
+            }
         }
         _=> panic!(" Packattack only supports string and int literals : {:#?} is not one!", quote!{ #literal })
     }
@@ -105,7 +117,7 @@ pub fn ident_from_str(name : &str) -> syn::Ident
     match syn::parse_str::<syn::Ident>(name)
     {
         Ok(ident) => ident,
-        Err(_e) => panic!("Packattack internal  error: couldn't use the name of datatype {} as an identifier!", name)
+        Err(_e) => panic!("Packattack internal error: couldn't use the name of datatype {} as an identifier!", name)
     }
 }
 

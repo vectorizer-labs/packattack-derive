@@ -11,7 +11,7 @@ pub fn get_field(parent_data_type : ParentDataType, derivable : Derivable, prece
     let address = match parent_data_type
     {
         //TODO: fix the array name for FromReader
-        ParentDataType::FromReader => get_byte_indices(&inner_type, preceeding_bits, quote!{ reader }),
+        ParentDataType::FromReader => get_byte_indices(&inner_type, preceeding_bits, quote!{ bytes }),
         ParentDataType::FromSlice => get_slice_indices(&inner_type, preceeding_bits),
         ParentDataType::FromBytes => get_byte_indices(&inner_type, preceeding_bits, quote!{ bytes }),
         _ => panic!("Packattack : FromBytes type can only be inside FromBytes, FromReader, or FromSlice parent types!")

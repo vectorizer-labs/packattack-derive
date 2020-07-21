@@ -1,10 +1,11 @@
-use crate::util::{ get_meta_attribute, ident_from_meta_attribute };
+use crate::util::{ get_meta_attribute, ident_from_meta_attribute, expr_from_meta_attribute };
 
 use syn::{ Type, PathArguments, GenericArgument,  };
 
+#[derive(Clone)]
 pub enum Derivable
 {
-    InsideOption(syn::Type, syn::Ident),
+    InsideOption(syn::Type, syn::Expr),
     Naked(syn::Type)
 }
 
@@ -33,11 +34,20 @@ impl Derivable
             Derivable::Naked(ty) => ty.clone()
         }
     }
+
+    pub fn get_raw(&self ) -> proc_macro2::TokenStream
+    {
+        match self
+        {
+            Derivable::InsideOption(ty, _flag) => quote!{ Option<#ty> },
+            Derivable::Naked(ty) => quote!{ #ty }
+        }
+    }
 }
 
 //Taken from :
 //https://stackoverflow.com/questions/55271857/how-can-i-get-the-t-from-an-optiont-when-using-syn
-//TODO: This is probably overkill for our use case so maybe come back and double check the logic
+//TODO: change to from_field and move inside Derivable impl
 pub fn get_derivable(field : &syn::Field ) -> Derivable
 {
     match field.ty.clone()
@@ -58,9 +68,9 @@ pub fn get_derivable(field : &syn::Field ) -> Derivable
                 _ => panic!("Packattack: Token Inside Option isn't type!")
             };
             
-            let flag_ident : syn::Ident = match get_meta_attribute(&field.attrs, "flag")
+            let flag_ident : syn::Expr = match get_meta_attribute(&field.attrs, "flag")
             {
-                Some(meta) => ident_from_meta_attribute(meta),
+                Some(meta) => expr_from_meta_attribute(meta),
                 None => panic!("Packattack: Type is an Option<> but there was no 'flag' attribute!")
             };
 

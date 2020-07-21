@@ -4,7 +4,7 @@ use crate::struct_compiler;
 use crate::attributes::{ ParentDataType, FieldDataType, get_discriminant, enums::EnumDiscriminant };
 use proc_macro2::TokenStream;
 
-/*
+
 pub fn get_clauses(variants: &Punctuated<Variant, Comma>, 
     name : &proc_macro2::Ident, 
     attributes : &EnumDiscriminant,
@@ -20,12 +20,13 @@ pub fn get_clauses(variants: &Punctuated<Variant, Comma>,
             FieldDataType::FromReader => {},
             _ =>
             {
+                unimplemented!("Packattack : Enums can only be FromReader at the moment...");
                 //TODO: size this array appropriately for the size of a from_bytes type
-                global_declares.push(quote!
+                /*global_declares.push(quote!
                 {
                     let mut bytes : [u8; 1] = [0; 1];
                     reader.read_exact(&mut bytes).await?;
-                });
+                });*/
             }
             
         }
@@ -59,8 +60,14 @@ pub fn get_clauses(variants: &Punctuated<Variant, Comma>,
         //We should only copy into the next byte if the discriminant itself is NOT from_reader
         let size_in_bits = &attributes.size_in_bits;
 
+        let predicate : syn::Expr = syn::parse(quote!{ #size_in_bits }.into()).unwrap();
+
+
+
+
+        //removed data_types, declares
         //get the clauses for this enum variant
-        let (clauses, data_types, declares, _total_size_in_bits) = struct_compiler::get_fields(&variant.fields, quote!{ #size_in_bits }, parent_data_type);
+        let (clauses, declares, _total_size_in_bits) = struct_compiler::get_fields(&variant.fields, predicate, parent_data_type);
 
         //wrap the clauses
         let fin_clause = match &variant.fields {
@@ -76,8 +83,6 @@ pub fn get_clauses(variants: &Punctuated<Variant, Comma>,
         quote!{ 
             #discr => 
             {
-                #(#declares)*
-
                 #first_byte_assignment
 
                 #fin_clause
@@ -87,7 +92,7 @@ pub fn get_clauses(variants: &Punctuated<Variant, Comma>,
     .collect();
 
     (fin_vars, global_declares)
-}*/
+}
 
 
 //This whole business is a big mess due to the nature of allowing the enum discriminant 
@@ -147,3 +152,5 @@ fn get_first_byte_assignment(first_field_data_type : &FieldDataType,
         _ => quote!{}
     }
 }
+
+//TODO: fix enum declares

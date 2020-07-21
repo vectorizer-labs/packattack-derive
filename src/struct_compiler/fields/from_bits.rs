@@ -8,11 +8,11 @@ pub fn get_field(parent_data_type : ParentDataType, derivable : Derivable, prece
 {
     let inner_type = derivable.get_inner_type();
 
-    //TODO: scale this to [u8; ?] to allow FromBits types withS > 8 bits
+    //TODO: scale this to [u8; ?] to allow FromBits types with S > 8 bits
     let address = match parent_data_type
     {
         ParentDataType::FromBytes => get_bit_indices_from_array(&inner_type, preceeding_bits, ident_from_str("bytes")),
-        ParentDataType::FromReader => unimplemented!("oof"),
+        ParentDataType::FromReader => get_bit_indices_from_array(&inner_type, preceeding_bits, ident_from_str("bytes")),
         _ => panic!("Packattack : FromBits type can only be inside FromBytes or FromReader parent type!")
     };
     

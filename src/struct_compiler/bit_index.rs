@@ -80,6 +80,7 @@ pub fn get_bit_indices(derivable : &syn::Type,
     quote!{ (#byte_token & #bitmask) >> (8 - (#size_in_bits + #bits_consumed_inside_byte)) }
 }
 
+///////////////////////////
 /*
 pub fn get_read_clause(derivable : &syn::Type, preceeding_bits : &TokenStream, field_data_type : FieldDataType,
     parent_data_type : ParentDataType, array_count : usize) -> (TokenStream, TokenStream)
