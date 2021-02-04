@@ -160,6 +160,7 @@ fn get_field_data(fields: &syn::Fields, predicate : syn::Expr, parent_data_type 
     for field in fields.iter()
     {
         let data_type : FieldDataType = get_field_type(&field.attrs, &parent_data_type);
+        println!("Field Type : {:#?}", data_type);
 
         //collect the field_data_types in a first pass map()
         field_types.push(data_type);

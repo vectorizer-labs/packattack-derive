@@ -35,7 +35,7 @@ pub fn from_bits(input: TokenStream) -> TokenStream
 
     let name = ast.ident.clone();
 
-    let (fin_data_structure, declares, size_in_bits) = build_data_structure(ast, &name, ParentDataType::FromBits);
+    let (fin_data_structure, size_in_bits) = build_data_structure(ast, &name, ParentDataType::FromBits);
 
     let fin = quote!{
 
@@ -71,7 +71,7 @@ pub fn from_reader(input: TokenStream) -> TokenStream
 
     let name = ast.ident.clone();
 
-    let (fin_data_structure, declares, size_in_bits) = build_data_structure(ast, &name, ParentDataType::FromBytes);
+    let (fin_data_structure, size_in_bits) = build_data_structure(ast, &name, ParentDataType::FromReader);
 
     let fin = quote!{
         #[async_trait]
@@ -80,6 +80,8 @@ pub fn from_reader(input: TokenStream) -> TokenStream
         {
             async fn from_reader(reader : &mut R) -> Result<Self, crate::ERROR>
             {
+                let bytes;
+
                 #fin_data_structure
             }
         }
@@ -102,7 +104,7 @@ pub fn from_bytes(input: TokenStream) -> TokenStream
 
     let name = ast.ident.clone();
 
-    let (fin_data_structure, declares, size_in_bits) = build_data_structure(ast, &name, ParentDataType::FromBytes);
+    let (fin_data_structure, size_in_bits) = build_data_structure(ast, &name, ParentDataType::FromBytes);
 
     let size = bits_to_byte_ceiling(&size_in_bits);
 
@@ -134,7 +136,7 @@ pub fn from_bytes(input: TokenStream) -> TokenStream
 
 
 fn build_data_structure(input: syn::DeriveInput, name : &syn::Ident, parent_data_type : ParentDataType) 
--> (proc_macro2::TokenStream,Vec<proc_macro2::TokenStream>, proc_macro2::TokenStream)
+-> (proc_macro2::TokenStream, proc_macro2::TokenStream)
 {
     match input.data 
     {

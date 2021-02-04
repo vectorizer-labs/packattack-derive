@@ -9,7 +9,7 @@ use proc_macro2::TokenStream;
 use crate::attributes::{ ParentDataType };
 
 //Compiles the clauses into a struct
-pub fn get_struct(fields : &Fields, name : &proc_macro2::Ident, parent_data_type : ParentDataType) -> (TokenStream, Vec<TokenStream>, TokenStream)
+pub fn get_struct(fields : &Fields, name : &proc_macro2::Ident, parent_data_type : ParentDataType) -> (TokenStream, TokenStream)
 {
     //no predicate because there's no enum discrimnant to read
     let no_predicate : syn::Expr = syn::parse(quote!{ 0 }.into()).unwrap();
@@ -25,5 +25,12 @@ pub fn get_struct(fields : &Fields, name : &proc_macro2::Ident, parent_data_type
         _ => panic!("Packattack only supports reading from structs with named or unamed fields")
     };
 
-    (wrapped_fields, declares, total_size_in_bits)
+    let fin_fields = quote!
+    {
+        #(#declares)*
+
+        #wrapped_fields
+    };
+
+    (fin_fields, total_size_in_bits)
 }

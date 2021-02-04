@@ -67,7 +67,7 @@ pub fn get_clauses(variants: &Punctuated<Variant, Comma>,
 
         //removed data_types, declares
         //get the clauses for this enum variant
-        let (clauses, declares, _total_size_in_bits) = struct_compiler::get_fields(&variant.fields, predicate, parent_data_type);
+        let (clauses, declares, total_size_in_bits) = struct_compiler::fields::build_clauses(&variant.fields, predicate, parent_data_type);
 
         //wrap the clauses
         let fin_clause = match &variant.fields {
@@ -76,14 +76,14 @@ pub fn get_clauses(variants: &Punctuated<Variant, Comma>,
             Fields::Unit => unreachable!()
         };
 
-        let first_field_data_type : FieldDataType = data_types[0].clone();
+        //let first_field_data_type : FieldDataType = data_types[0].clone();
 
-        let first_byte_assignment = get_first_byte_assignment(&first_field_data_type, &attributes.data_type, &parent_data_type);
+        //let first_byte_assignment = get_first_byte_assignment(&first_field_data_type, &attributes.data_type, &parent_data_type);
 
         quote!{ 
             #discr => 
             {
-                #first_byte_assignment
+                //#first_byte_assignment
 
                 #fin_clause
             },
